@@ -1,4 +1,14 @@
 package searchengine.dto.indexing;
 
-public record IndexingResponse () {
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class IndexingResponse {
+    private boolean result;
+    private String error;
+
+    public IndexingResponse(boolean result, String error) {
+    }
 }

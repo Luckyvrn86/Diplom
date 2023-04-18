@@ -20,6 +20,5 @@ indexing-settings:
   sites:
     - url: https://www.playback.ru
       name: PlayBack.Ru
-    - url: https://volochek.life
-      name: Volochek.life
+
 

@@ -4,20 +4,17 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import searchengine.model.Page;
-import searchengine.model.Site;
-import searchengine.model.Status;
+import searchengine.model.*;
+import searchengine.repository.IndexRepository;
+import searchengine.repository.LemmaRepository;
 import searchengine.repository.PageRepository;
 import searchengine.repository.SiteRepository;
+import searchengine.services.lemmatizator.LemmaFinder;
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.RecursiveAction;
-
 import static java.lang.Thread.sleep;
 
 public class SiteGetChild extends RecursiveAction {
@@ -27,6 +24,8 @@ public class SiteGetChild extends RecursiveAction {
     private final List<String> alreadyVisited;
     private final SiteRepository siteRepository;
     private final PageRepository pageRepository;
+    private final LemmaRepository lemmaRepository;
+    private final IndexRepository indexRepository;
     private static final CopyOnWriteArraySet<String> urlSet = new CopyOnWriteArraySet<>();
 
     public SiteGetChild(MainSite mainSite, MainSite parentUrl, Site site) {
@@ -34,6 +33,8 @@ public class SiteGetChild extends RecursiveAction {
         this.parentUrl = parentUrl;
         siteRepository = mainSite.getIndexingService().getSiteRepository();
         pageRepository = mainSite.getIndexingService().getPageRepository();
+        lemmaRepository = mainSite.getIndexingService().getLemmaRepository();
+        indexRepository = mainSite.getIndexingService().getIndexRepository();
         this.site = site;
         alreadyVisited = new ArrayList<>();
     }
@@ -78,7 +79,7 @@ public class SiteGetChild extends RecursiveAction {
 
     }
 
-    private void addPage(Document document, String child) {
+    private synchronized void addPage(Document document, String child) throws IOException {
         if (child.equals("")) return;
         site.setStatusTime(LocalDateTime.now());
         siteRepository.save(site);
@@ -88,6 +89,31 @@ public class SiteGetChild extends RecursiveAction {
         page.setPath(child.replace(site.getUrl(), ""));
         page.setContent(document.html());
         pageRepository.save(page);
+        if (page.getCode() < 400) addLemmaAndIndex(page, document);
+    }
+
+    private synchronized void addLemmaAndIndex(Page page, Document document) throws IOException {
+        Map<String, Integer> lemmas = LemmaFinder.getInstance().collectLemmas(document.text());
+        lemmas.forEach((word, rank) -> {
+            Lemma lemma = lemmaRepository.findBySiteAndLemma(site, word);
+            if (!(lemma ==null)) {
+                lemma.setFrequency(lemma.getFrequency() + 1);
+            } else {
+                lemma = new Lemma();
+                lemma.setSite(site);
+                lemma.setLemma(word);
+                lemma.setFrequency(1);
+            }
+            lemmaRepository.save(lemma);
+            Index index = indexRepository.findByPageAndLemma(page, lemma);
+            if (index == null) {
+                index = new Index();
+                index.setPage(page);
+                index.setLemma(lemma);
+                index.setRank(rank);
+                indexRepository.save(index);
+            }
+        });
     }
 
     private boolean isValid(String url) {
