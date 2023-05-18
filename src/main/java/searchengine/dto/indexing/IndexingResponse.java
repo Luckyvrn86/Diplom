@@ -7,7 +7,7 @@ import lombok.Setter;
 @Setter
 public class IndexingResponse {
     private boolean result;
-    private String error;
+    private String error = "";
 
     public IndexingResponse(boolean result, String error) {
     }

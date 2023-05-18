@@ -1,4 +1,4 @@
-package searchengine.services;
+package searchengine.services.indexing;
 
 import lombok.Data;
 import org.springframework.stereotype.Service;
@@ -12,8 +12,8 @@ import searchengine.repository.IndexRepository;
 import searchengine.repository.LemmaRepository;
 import searchengine.repository.PageRepository;
 import searchengine.repository.SiteRepository;
-import searchengine.services.parsing.MainSite;
-import searchengine.services.parsing.SiteGetChild;
+import searchengine.services.parsing.SiteParser;
+import searchengine.services.parsing.PageParser;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -78,11 +78,11 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     private void parsingSite(String url) {
-        MainSite mainSite = new MainSite(url, this);
+        SiteParser siteParser = new SiteParser(url, this);
         Site site = siteRepository.findSiteByUrl(url);
         ForkJoinPool pool = new ForkJoinPool();
         pools.add(pool);
-        pool.invoke(new SiteGetChild(mainSite, mainSite, site));
+        pool.invoke(new PageParser(siteParser, siteParser, site));
         if (!site.getStatus().equals(Status.FAILED)) {
             site.setStatus(Status.INDEXED);
             site.setStatusTime(LocalDateTime.now());

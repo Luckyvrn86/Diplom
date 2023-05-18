@@ -70,6 +70,22 @@ public class LemmaFinder {
         return lemmaSet;
     }
 
+    public List<Integer> getLemmaIndex(String text, String lemma) {
+        int index = 0;
+        List<Integer> lemmasIndex = new ArrayList<>();
+        String[] words = text.toLowerCase().split("\\p{Punct}|\\s");
+        for (String word : words) {
+            Set<String> lemmasSet = getLemmaSet(word);
+            for (String lemmas : lemmasSet) {
+                if (lemmas.equals(lemma)) {
+                    lemmasIndex.add(index);
+                }
+            }
+            index += word.length() + 1;
+        }
+        return lemmasIndex;
+    }
+
     private boolean anyWordBaseBelongToParticle(List<String> wordBaseForms) {
         return wordBaseForms.stream().anyMatch(this::hasParticleProperty);
     }

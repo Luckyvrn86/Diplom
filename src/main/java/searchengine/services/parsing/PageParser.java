@@ -17,10 +17,10 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.RecursiveAction;
 import static java.lang.Thread.sleep;
 
-public class SiteGetChild extends RecursiveAction {
+public class PageParser extends RecursiveAction {
     private final Site site;
-    private final MainSite mainSite;
-    private final MainSite parentUrl;
+    private final SiteParser siteParser;
+    private final SiteParser parentUrl;
     private final List<String> alreadyVisited;
     private final SiteRepository siteRepository;
     private final PageRepository pageRepository;
@@ -28,13 +28,13 @@ public class SiteGetChild extends RecursiveAction {
     private final IndexRepository indexRepository;
     private static final CopyOnWriteArraySet<String> urlSet = new CopyOnWriteArraySet<>();
 
-    public SiteGetChild(MainSite mainSite, MainSite parentUrl, Site site) {
-        this.mainSite = mainSite;
+    public PageParser(SiteParser siteParser, SiteParser parentUrl, Site site) {
+        this.siteParser = siteParser;
         this.parentUrl = parentUrl;
-        siteRepository = mainSite.getIndexingService().getSiteRepository();
-        pageRepository = mainSite.getIndexingService().getPageRepository();
-        lemmaRepository = mainSite.getIndexingService().getLemmaRepository();
-        indexRepository = mainSite.getIndexingService().getIndexRepository();
+        siteRepository = siteParser.getIndexingService().getSiteRepository();
+        pageRepository = siteParser.getIndexingService().getPageRepository();
+        lemmaRepository = siteParser.getIndexingService().getLemmaRepository();
+        indexRepository = siteParser.getIndexingService().getIndexRepository();
         this.site = site;
         alreadyVisited = new ArrayList<>();
     }
@@ -43,35 +43,35 @@ public class SiteGetChild extends RecursiveAction {
 
     @Override
     protected void compute() {
-        Set<SiteGetChild> taskSet = new HashSet<>();
+        Set<PageParser> taskSet = new HashSet<>();
         try {
             sleep(150);
-            Document document = Jsoup.connect(mainSite.getUrl()).userAgent("LuckySearchBot (Windows; U; WindowsNT" +
+            Document document = Jsoup.connect(siteParser.getUrl()).userAgent("LuckySearchBot (Windows; U; WindowsNT" +
                     " 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6").referrer("http://www.google.com")
                     .ignoreContentType(true).ignoreHttpErrors(true).get();
             Elements urls = document.select("a");
             for (Element url : urls) {
                 String child = url.attr("abs:href");
                 if (isValid(child) & !alreadyVisited.contains(child)) {
-                    this.mainSite.addChild(new MainSite(child, this.mainSite.getIndexingService()));
+                    this.siteParser.addChild(new SiteParser(child, this.siteParser.getIndexingService()));
                     urlSet.add(child);
                     addPage(document, child);
                     alreadyVisited.add(child);
                 }
             }
 
-            for (MainSite url : mainSite.getChild()) {
-                SiteGetChild task = new SiteGetChild(url, parentUrl, this.getSite());
+            for (SiteParser url : siteParser.getChild()) {
+                PageParser task = new PageParser(url, parentUrl, this.getSite());
                 task.fork();
                 taskSet.add(task);
             }
 
-            for (SiteGetChild task : taskSet) {
+            for (PageParser task : taskSet) {
                 task.join();
             }
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
-            Site site = siteRepository.findSiteByUrl(mainSite.getUrl());
+            Site site = siteRepository.findSiteByUrl(siteParser.getUrl());
             site.setStatus(Status.FAILED);
             site.setLastError("Ошибка индексации сайта " + site.getUrl());
             siteRepository.save(site);

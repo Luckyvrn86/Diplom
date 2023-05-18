@@ -1,33 +1,33 @@
 package searchengine.services.parsing;
 
 
-import searchengine.services.IndexingServiceImpl;
+import searchengine.services.indexing.IndexingServiceImpl;
 
 import java.util.concurrent.CopyOnWriteArraySet;
 
-public class MainSite {
+public class SiteParser {
     private final String url;
-    private volatile MainSite parent;
+    private volatile SiteParser parent;
     private final IndexingServiceImpl indexingService;
-    private final CopyOnWriteArraySet<MainSite> child;
+    private final CopyOnWriteArraySet<SiteParser> child;
 
-    public MainSite(String url, IndexingServiceImpl indexingService) {
+    public SiteParser(String url, IndexingServiceImpl indexingService) {
         this.url = url;
         child = new CopyOnWriteArraySet<>();
         parent = null;
         this.indexingService = indexingService;
     }
 
-    public void addChild(MainSite child) {
+    public void addChild(SiteParser child) {
         if (!this.child.contains(child) && child.getUrl().startsWith(url)) {
             this.child.add(child);
             child.setParent(this);
         }
     }
 
-    private void setParent(MainSite siteMapMainSite) {
+    private void setParent(SiteParser siteMapSiteParser) {
         synchronized (this) {
-            this.parent = siteMapMainSite;
+            this.parent = siteMapSiteParser;
         }
     }
 
@@ -35,7 +35,7 @@ public class MainSite {
         return url;
     }
 
-    public CopyOnWriteArraySet<MainSite> getChild() {
+    public CopyOnWriteArraySet<SiteParser> getChild() {
         return child;
     }
 
