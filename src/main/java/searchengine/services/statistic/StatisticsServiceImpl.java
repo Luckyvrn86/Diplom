@@ -14,6 +14,8 @@ import searchengine.repository.LemmaRepository;
 import searchengine.repository.PageRepository;
 import searchengine.repository.SiteRepository;
 
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -30,25 +32,15 @@ public class StatisticsServiceImpl implements StatisticsService {
     @Override
     public StatisticsResponse getStatistics() {
         List<Site> sites = siteRepository.findAll();
-        TotalStatistics totalStatistics = new TotalStatistics();
-        StatisticsData statisticsData = new StatisticsData();
-        StatisticsResponse response = new StatisticsResponse();
-        if (sites.isEmpty()){
-            statisticsData.setTotal(totalStatistics);
-            response.setStatistics(statisticsData);
-            return response;
-        }
-        for (Site site : sites){
+        TotalStatistics totalStatistics = new TotalStatistics(sites.size(), pageRepository.count(),
+                lemmaRepository.count(), true);
+        List<DetailedStatisticsItem> detailedStatistic = new ArrayList<>();
+        for (Site site : siteRepository.findAll()) {
             DetailedStatisticsItem detailedStatisticsItem = new DetailedStatisticsItem(site, this);
-            statisticsData.addDetailedStatistic(detailedStatisticsItem);
-            totalStatistics.setPages(totalStatistics.getPages() + detailedStatisticsItem.getPages());
-            totalStatistics.setLemmas(totalStatistics.getLemmas() + detailedStatisticsItem.getLemmas());
-            if (site.getStatus().equals(Status.INDEXING)) totalStatistics.setIndexing(true);
+            detailedStatistic.add(detailedStatisticsItem);
         }
-        totalStatistics.setSites(sites.size());
-        statisticsData.setTotal(totalStatistics);
-        response.setStatistics(statisticsData);
-        return response;
+
+        return new StatisticsResponse(true, new StatisticsData(totalStatistics, detailedStatistic));
     }
 }
 

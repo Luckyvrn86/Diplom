@@ -17,5 +17,7 @@ public interface PageRepository extends JpaRepository<Page, Integer> {
     List<Page> findAllBySite(Site site);
     @Query(value = "SELECT p.* FROM Page p JOIN `index` i ON p.id = i.page_id WHERE i.lemma_id IN :lemmas",
             nativeQuery = true)
-    List<Page> findByLemmas(@Param("lemmas") Collection<Lemma> lemmas);
+    List<Page> findByLemmaList(@Param("lemmas") Collection<Lemma> lemmas);
+
+    long countBySite(Site site);
 }

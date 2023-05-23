@@ -5,7 +5,6 @@ import org.springframework.stereotype.Service;
 import searchengine.config.SiteConfig;
 import searchengine.config.SitesList;
 import searchengine.dto.indexing.IndexingResponse;
-import searchengine.model.Page;
 import searchengine.model.Site;
 import searchengine.model.Status;
 import searchengine.repository.IndexRepository;
@@ -14,7 +13,6 @@ import searchengine.repository.PageRepository;
 import searchengine.repository.SiteRepository;
 import searchengine.services.parsing.SiteParser;
 import searchengine.services.parsing.PageParser;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -93,8 +91,11 @@ public class IndexingServiceImpl implements IndexingService {
 
 
     public void dataDelete(Site site) {
-        if (site != null) siteRepository.delete(site);
-        List<Page> pages = pageRepository.findAllBySite(site);
-        if (!pages.isEmpty()) pageRepository.deleteAll(pages);
+        if (site != null) {
+            indexRepository.deleteAllInBatch();
+            lemmaRepository.deleteAllInBatch();
+            pageRepository.deleteAllInBatch();
+            siteRepository.deleteAllInBatch();
+        }
     }
 }

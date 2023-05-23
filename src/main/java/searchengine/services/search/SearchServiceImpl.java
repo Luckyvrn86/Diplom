@@ -40,65 +40,76 @@ public class SearchServiceImpl implements SearchService {
     @Autowired
     private LemmaRepository lemmaRepository;
 
-    @Override
-    public SearchResponse search(String query, String urlSite, int offset, int limit)  {
-        SearchResponse response = new SearchResponse(true);
-        List<String> searchRequest = null;
+    private LemmaFinder lemmaFinder;
+    {
         try {
-            searchRequest = (LemmaFinder.getInstance().getLemmaSet(query)).stream().toList();
+            lemmaFinder = LemmaFinder.getInstance();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        List<Lemma> lemmaList = new ArrayList<>();
+    }
+
+    @Override
+    public SearchResponse search(String query, String urlSite, int offset, int limit)  {
         List<SearchData> searchData = new ArrayList<>();
-        if (urlSite.isEmpty()){
+        if (urlSite.isEmpty()) {
             for (Site site : siteRepository.findAll()) {
-                lemmaList.addAll(getLemmasFromSite(site, searchRequest));
+                searchData.addAll(oneSiteSearch(query, site.getUrl(), offset, limit));
             }
-            for (Lemma lemma : lemmaList) {
-                if (lemma.getLemma().equals(query)){
-                    try {
-                        searchData = getSearchResponse(lemmaList, searchRequest, offset);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            }
-            int count = searchData.size();
-            if (searchData.size() > limit) searchData.subList(0, limit);
-            searchData.sort((o1, o2) -> Float.compare(o2.getRelevance(), o1.getRelevance()));
-            return new SearchResponse(true, count, searchData);
-        } else {
-            Site site = siteRepository.findSiteByUrl(urlSite);
-            lemmaList.addAll(getLemmasFromSite(site, searchRequest));
-            try {
-                searchData = getSearchResponse(lemmaList, searchRequest, offset);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-            return new SearchResponse(true, searchData.size(), searchData);
-        }
+        } else searchData.addAll(oneSiteSearch(query, urlSite, offset, limit));
+        int count = searchData.size();
+        if (searchData.size() > limit) searchData.subList(0, limit);
+        searchData.sort((o1, o2) -> Float.compare(o2.getRelevance(), o1.getRelevance()));
+        return new SearchResponse(true, count, searchData);
     }
 
-    private List<Lemma> getLemmasFromSite (Site site, List<String> lemmas){
-        List<Lemma> lemmaList = lemmaRepository.findAllBySite(site);
-        List<Lemma> lemmaFromSite = new ArrayList<>();
-        for (Lemma lemma : lemmaList) {
-            for (String word : lemmas){
-                if (lemma.getLemma().equals(word)) lemmaFromSite.add(lemma);
-            }
-        }
-        lemmaFromSite.sort(Comparator.comparing(Lemma::getFrequency));
-        return lemmaFromSite;
+    private List<SearchData> oneSiteSearch (String query, String urlSite, int offset, int limit){
+        List<String> searchRequest = (lemmaFinder.getLemmaSet(query)).stream().toList();
+        Site site = siteRepository.findSiteByUrl(urlSite);
+        List<Lemma> lemmaRequest = new ArrayList<>(lemmaRepository.findLemmaListBySite(searchRequest, site));
+        List<Lemma> sortedLemmas = getAverageFrequency(lemmaRequest);
+        List<SearchData> searchData;
+        searchData = getSearchResponse(sortedLemmas, searchRequest, offset);
+        return searchData.subList(0, limit);
     }
 
-    private List<SearchData> getSearchResponse(List<Lemma> lemmaList, List<String> wordList, int offset) throws IOException {
-        List<Page> pages = pageRepository.findByLemmas(lemmaList);
+    private Set<Page> getPages (List<Lemma> lemmas){
+        Set<Index> indexSet = indexRepository.findAllByLemma(lemmas.get(0));
+        Set<Page> pages = new HashSet<>();
+        for (Index index : indexSet) {
+            pages.add(index.getPage());
+        }
+        for (int i = 1; i < lemmas.size() -1; i++){
+            indexSet.clear();
+            indexSet.addAll(indexRepository.findAllByLemma(lemmas.get(i)));
+            Set<Page> currentPages = new HashSet<>();
+            for (Index index : indexSet) currentPages.add(index.getPage());
+            pages.retainAll(currentPages);
+        }
+
+        return pages;
+    }
+    private List<Lemma> getAverageFrequency(List<Lemma> lemmas){
+        int totalFrequency = 0;
+        for (Lemma lemma : lemmas){
+            totalFrequency += lemma.getFrequency();
+        }
+        int averageFrequency = totalFrequency / lemmas.size();
+        List<Lemma> lemmaList = new ArrayList<>();
+        for (Lemma lemma : lemmas){
+            if (lemma.getFrequency() < averageFrequency) lemmaList.add(lemma);
+        }
+        lemmaList.sort((o1, o2) -> Float.compare(o1.getFrequency(), o2.getFrequency()));
+        return lemmaList;
+    }
+
+    private List<SearchData> getSearchResponse(List<Lemma> lemmaList, List<String> wordList, int offset) {
+        List<Page> pages = getPages(lemmaList).stream().toList();
         List<Index> indexes = indexRepository.findByPagesAndLemmas(lemmaList, pages);
         HashMap<Page, Float> pageRelevance = getRelevance(pages, indexes);
         List<SearchData> searchData = getSearchData(pageRelevance, wordList);
         if (searchData.size() < offset) return new ArrayList<>();
-        else return searchData;
+        else return searchData.subList(offset, searchData.size() - 1);
     }
 
     private HashMap<Page, Float> getRelevance(List<Page> pageList, List<Index> indexList){
@@ -119,7 +130,7 @@ public class SearchServiceImpl implements SearchService {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, HashMap::new));
     }
 
-    private List<SearchData> getSearchData(HashMap<Page, Float> pageRelevance, List<String> wordList) throws IOException {
+    private List<SearchData> getSearchData(HashMap<Page, Float> pageRelevance, List<String> wordList) {
         List<SearchData> searchData = new ArrayList<>();
         for (Page page : pageRelevance.keySet()){
             String site = page.getSite().getUrl();
@@ -134,10 +145,10 @@ public class SearchServiceImpl implements SearchService {
         return searchData;
     }
 
-    private String getSnippet(String text, List<String> words) throws IOException {
+    private String getSnippet(String text, List<String> words) {
         List<Integer> lemmaIndex = new ArrayList<>();
         for (String word : words){
-            lemmaIndex.addAll(LemmaFinder.getInstance().getLemmaIndex(word, text));
+            lemmaIndex.addAll(lemmaFinder.getLemmaIndex(text, word));
         }
         Collections.sort(lemmaIndex);
         StringBuilder result = new StringBuilder();
