@@ -50,7 +50,7 @@ public class SiteParser extends RecursiveAction {
         String currentUrl = site.getUrl();
         currentUrl = url == null ? currentUrl : currentUrl + url;
         try {
-            sleep(150);
+            sleep(250);
             Document document = Jsoup.connect(currentUrl).userAgent("LuckySearchBot (Windows; U; WindowsNT" +
                     " 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6").referrer("http://www.google.com")
                     .ignoreContentType(true).ignoreHttpErrors(true).get();
@@ -58,7 +58,8 @@ public class SiteParser extends RecursiveAction {
             Elements urls = document.select("a");
             for (Element url : urls) {
                 String child = url.absUrl("href").replaceAll("\\?.+", "");
-                if (isValid(child) & pageRepository.findByPath(correctUrl(child)) == null) {
+                Optional<Page> optionalPage = pageRepository.findByPath(correctUrl(child));
+                if (isValid(child) && optionalPage.isEmpty()) {
                     SiteParser parser = new SiteParser(correctUrl(child), this);
                     parser.fork();
                     taskList.add(parser);
