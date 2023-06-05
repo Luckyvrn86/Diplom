@@ -26,6 +26,7 @@ public class SiteParser extends RecursiveAction {
     private final PageRepository pageRepository;
     private final LemmaRepository lemmaRepository;
     private final IndexRepository indexRepository;
+    private final List<String> visit;
     private final List<SiteParser> taskList = new ArrayList<>();
 
     public SiteParser(Site site, IndexingServiceImpl indexingService) {
@@ -34,6 +35,7 @@ public class SiteParser extends RecursiveAction {
         siteRepository = indexingService.getSiteRepository();
         lemmaRepository = indexingService.getLemmaRepository();
         indexRepository = indexingService.getIndexRepository();
+        visit = new ArrayList<>();
     }
 
     public SiteParser(String url, SiteParser siteParser) {
@@ -43,6 +45,7 @@ public class SiteParser extends RecursiveAction {
         siteRepository = siteParser.siteRepository;
         lemmaRepository = siteParser.lemmaRepository;
         indexRepository = siteParser.indexRepository;
+        visit = siteParser.visit;
     }
 
     @Override
@@ -58,8 +61,8 @@ public class SiteParser extends RecursiveAction {
             Elements urls = document.select("a");
             for (Element url : urls) {
                 String child = url.absUrl("href").replaceAll("\\?.+", "");
-                Optional<Page> optionalPage = pageRepository.findByPath(correctUrl(child));
-                if (isValid(child) && optionalPage.isEmpty()) {
+                if (isValid(child) && pageRepository.findByPath(correctUrl(child)) == null && !visit.contains(child)) {
+                    visit.add(child);
                     SiteParser parser = new SiteParser(correctUrl(child), this);
                     parser.fork();
                     taskList.add(parser);
