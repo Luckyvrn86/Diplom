@@ -12,10 +12,14 @@ import searchengine.repository.PageRepository;
 import searchengine.repository.SiteRepository;
 import searchengine.services.indexing.IndexingServiceImpl;
 import searchengine.services.lemmatizator.LemmaFinder;
+
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.RecursiveAction;
+
 import static java.lang.Thread.sleep;
 
 @RequiredArgsConstructor
@@ -55,7 +59,7 @@ public class SiteParser extends RecursiveAction {
         try {
             sleep(250);
             Document document = Jsoup.connect(currentUrl).userAgent("LuckySearchBot (Windows; U; WindowsNT" +
-                    " 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6").referrer("http://www.google.com")
+                            " 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6").referrer("http://www.google.com")
                     .ignoreContentType(true).ignoreHttpErrors(true).get();
             if (url != null) addPage(document, url);
             Elements urls = document.select("a");
@@ -99,7 +103,7 @@ public class SiteParser extends RecursiveAction {
         Map<String, Integer> lemmas = LemmaFinder.getInstance().collectLemmas(document.text());
         lemmas.forEach((word, rank) -> {
             Lemma lemma = lemmaRepository.findBySiteAndLemma(site, word);
-            if (!(lemma ==null)) {
+            if (!(lemma == null)) {
                 lemma.setFrequency(lemma.getFrequency() + 1);
             } else {
                 lemma = new Lemma();

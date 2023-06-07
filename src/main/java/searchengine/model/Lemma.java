@@ -1,5 +1,7 @@
 package searchengine.model;
+
 import lombok.Data;
+
 import javax.persistence.*;
 
 

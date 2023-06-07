@@ -10,8 +10,6 @@ import searchengine.services.indexing.IndexingService;
 import searchengine.services.search.SearchService;
 import searchengine.services.statistic.StatisticsService;
 
-import java.io.IOException;
-
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api")
@@ -32,7 +30,7 @@ public class ApiController {
     }
 
     @PostMapping("/indexPage")
-    public ResponseEntity<IndexingResponse> indexPage(@RequestParam(name = "url") String url){
+    public ResponseEntity<IndexingResponse> indexPage(@RequestParam(name = "url") String url) {
         return ResponseEntity.ok(indexingService.indexPage(url));
     }
 
@@ -43,7 +41,7 @@ public class ApiController {
 
     @GetMapping("/search")
     public ResponseEntity<SearchResponse> search(@RequestParam(name = "query", required = false, defaultValue = "")
-                                                     String query,
+                                                 String query,
                                                  @RequestParam(name = "site", required = false, defaultValue = "") String site,
                                                  @RequestParam(name = "offset", required = false, defaultValue = "0") int offset,
                                                  @RequestParam(name = "limit", required = false, defaultValue = "20") int limit) {

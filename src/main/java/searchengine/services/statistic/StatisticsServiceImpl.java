@@ -9,12 +9,10 @@ import searchengine.dto.statistics.StatisticsData;
 import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.dto.statistics.TotalStatistics;
 import searchengine.model.Site;
-import searchengine.model.Status;
 import searchengine.repository.LemmaRepository;
 import searchengine.repository.PageRepository;
 import searchengine.repository.SiteRepository;
 
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,6 +27,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     private PageRepository pageRepository;
     @Autowired
     private LemmaRepository lemmaRepository;
+
     @Override
     public StatisticsResponse getStatistics() {
         List<Site> sites = siteRepository.findAll();

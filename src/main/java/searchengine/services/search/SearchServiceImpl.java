@@ -41,6 +41,7 @@ public class SearchServiceImpl implements SearchService {
     private LemmaRepository lemmaRepository;
 
     private LemmaFinder lemmaFinder;
+
     {
         try {
             lemmaFinder = LemmaFinder.getInstance();
@@ -50,7 +51,7 @@ public class SearchServiceImpl implements SearchService {
     }
 
     @Override
-    public SearchResponse search(String query, String urlSite, int offset, int limit)  {
+    public SearchResponse search(String query, String urlSite, int offset, int limit) {
         List<SearchData> searchData = new ArrayList<>();
         if (urlSite.isEmpty()) {
             for (Site site : siteRepository.findAll()) {
@@ -63,7 +64,7 @@ public class SearchServiceImpl implements SearchService {
         return new SearchResponse(true, count, searchData);
     }
 
-    private List<SearchData> oneSiteSearch (String query, String urlSite, int offset, int limit){
+    private List<SearchData> oneSiteSearch(String query, String urlSite, int offset, int limit) {
         List<String> searchRequest = (lemmaFinder.getLemmaSet(query)).stream().toList();
         Site site = siteRepository.findSiteByUrl(urlSite);
         List<Lemma> lemmaRequest = new ArrayList<>(lemmaRepository.findLemmaListBySite(searchRequest, site));
@@ -73,13 +74,13 @@ public class SearchServiceImpl implements SearchService {
         return searchData.subList(0, limit);
     }
 
-    private Set<Page> getPages (List<Lemma> lemmas){
+    private Set<Page> getPages(List<Lemma> lemmas) {
         Set<Index> indexSet = indexRepository.findAllByLemma(lemmas.get(0));
         Set<Page> pages = new HashSet<>();
         for (Index index : indexSet) {
             pages.add(index.getPage());
         }
-        for (int i = 1; i < lemmas.size() -1; i++){
+        for (int i = 1; i < lemmas.size() - 1; i++) {
             indexSet.clear();
             indexSet.addAll(indexRepository.findAllByLemma(lemmas.get(i)));
             Set<Page> currentPages = new HashSet<>();
@@ -89,14 +90,15 @@ public class SearchServiceImpl implements SearchService {
 
         return pages;
     }
-    private List<Lemma> getAverageFrequency(List<Lemma> lemmas){
+
+    private List<Lemma> getAverageFrequency(List<Lemma> lemmas) {
         int totalFrequency = 0;
-        for (Lemma lemma : lemmas){
+        for (Lemma lemma : lemmas) {
             totalFrequency += lemma.getFrequency();
         }
         int averageFrequency = totalFrequency / lemmas.size();
         List<Lemma> lemmaList = new ArrayList<>();
-        for (Lemma lemma : lemmas){
+        for (Lemma lemma : lemmas) {
             if (lemma.getFrequency() < averageFrequency) lemmaList.add(lemma);
         }
         lemmaList.sort((o1, o2) -> Float.compare(o1.getFrequency(), o2.getFrequency()));
@@ -112,17 +114,17 @@ public class SearchServiceImpl implements SearchService {
         else return searchData.subList(offset, searchData.size() - 1);
     }
 
-    private HashMap<Page, Float> getRelevance(List<Page> pageList, List<Index> indexList){
+    private HashMap<Page, Float> getRelevance(List<Page> pageList, List<Index> indexList) {
         HashMap<Page, Float> relevance = new HashMap<>();
-        for (Page page : pageList){
+        for (Page page : pageList) {
             float rel = 0;
-            for (Index index : indexList){
+            for (Index index : indexList) {
                 if (index.getPage() == page) rel += index.getRank();
             }
             relevance.put(page, rel);
         }
         HashMap<Page, Float> absRelevance = new HashMap<>();
-        for (Page page : relevance.keySet()){
+        for (Page page : relevance.keySet()) {
             float absRel = relevance.get(page) / Collections.max(relevance.values());
             absRelevance.put(page, absRel);
         }
@@ -132,7 +134,7 @@ public class SearchServiceImpl implements SearchService {
 
     private List<SearchData> getSearchData(HashMap<Page, Float> pageRelevance, List<String> wordList) {
         List<SearchData> searchData = new ArrayList<>();
-        for (Page page : pageRelevance.keySet()){
+        for (Page page : pageRelevance.keySet()) {
             String site = page.getSite().getUrl();
             String siteName = page.getSite().getName();
             String uri = page.getPath();
@@ -147,7 +149,7 @@ public class SearchServiceImpl implements SearchService {
 
     private String getSnippet(String text, List<String> words) {
         List<Integer> lemmaIndex = new ArrayList<>();
-        for (String word : words){
+        for (String word : words) {
             lemmaIndex.addAll(lemmaFinder.getLemmaIndex(text, word));
         }
         Collections.sort(lemmaIndex);
@@ -195,7 +197,7 @@ public class SearchServiceImpl implements SearchService {
         return words;
     }
 
-    private String getContent (String text, String content){
+    private String getContent(String text, String content) {
         StringBuilder result = new StringBuilder();
         Document document = Jsoup.parse(text);
         Elements elements = document.select(content);

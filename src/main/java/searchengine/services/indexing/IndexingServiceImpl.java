@@ -1,6 +1,7 @@
 package searchengine.services.indexing;
 
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import searchengine.config.SiteConfig;
 import searchengine.config.SitesList;
@@ -12,11 +13,11 @@ import searchengine.repository.LemmaRepository;
 import searchengine.repository.PageRepository;
 import searchengine.repository.SiteRepository;
 import searchengine.services.parsing.SiteParser;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
-import lombok.RequiredArgsConstructor;
 
 
 @Service
@@ -75,7 +76,7 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     @Override
-    public IndexingResponse indexPage (String url){
+    public IndexingResponse indexPage(String url) {
         SiteConfig siteConfig = siteList.getSites().stream()
                 .filter(site -> site.getUrl().equals(url))
                 .findFirst()
