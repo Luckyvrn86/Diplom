@@ -38,12 +38,8 @@ public class IndexingServiceImpl implements IndexingService {
             Site check = siteRepository.findSiteByUrl(site.getUrl());
             if (check != null && check.getStatus().equals(Status.INDEXING))
                 return new IndexingResponse(false, "Индексация уже запущена");
-            dataDelete(siteRepository.findSiteByUrl(site.getUrl()));
-            Site newSite = new Site();
-            newSite.setName(site.getName());
-            newSite.setUrl(site.getUrl());
-            newSite.setStatus(Status.INDEXING);
-            newSite.setStatusTime(LocalDateTime.now());
+            dataDelete();
+            Site newSite = siteCreate(site);
             siteRepository.save(newSite);
         }
 
@@ -53,13 +49,11 @@ public class IndexingServiceImpl implements IndexingService {
         return new IndexingResponse(true, "");
     }
 
-    public void dataDelete(Site site) {
-        if (site != null) {
-            indexRepository.deleteAllInBatch();
-            lemmaRepository.deleteAllInBatch();
-            pageRepository.deleteAllInBatch();
-            siteRepository.deleteAllInBatch();
-        }
+    public void dataDelete() {
+        pageRepository.deleteAllInBatch();
+        indexRepository.deleteAllInBatch();
+        lemmaRepository.deleteAllInBatch();
+        siteRepository.deleteAllInBatch();
     }
 
     @Override
@@ -77,13 +71,16 @@ public class IndexingServiceImpl implements IndexingService {
 
     @Override
     public IndexingResponse indexPage(String url) {
-        SiteConfig siteConfig = siteList.getSites().stream()
-                .filter(site -> site.getUrl().equals(url))
-                .findFirst()
-                .orElse(null);
-        if (siteConfig == null) return new IndexingResponse(false, "Данная страница находится за " +
+        SiteConfig siteConfig = new SiteConfig("", "");
+        for (SiteConfig site : siteList.getSites()){
+            if (url.startsWith(site.getUrl())) {
+                siteConfig.setUrl(url);
+                siteConfig.setName(url);
+            }
+        }
+        if (siteConfig.getUrl().equals("")) return new IndexingResponse(false, "Данная страница находится за " +
                 "пределами сайтов, указанных в конфигурационном файле");
-        new Thread(() -> runParser(siteRepository.findSiteByUrl(siteConfig.getUrl()))).start();
+        new Thread(() -> runParser(url)).start();
         return new IndexingResponse(true, "");
     }
 
@@ -99,5 +96,20 @@ public class IndexingServiceImpl implements IndexingService {
             siteRepository.save(site);
             poolList.remove(pool);
         }
+    }
+    private void runParser(String url){
+        ForkJoinPool pool = new ForkJoinPool(4);
+        poolList.add(pool);
+        SiteParser siteParser = new SiteParser(url, this);
+        pool.invoke(siteParser);
+        poolList.remove(pool);
+    }
+    private Site siteCreate (SiteConfig siteConfig){
+        Site newSite = new Site();
+        newSite.setName(siteConfig.getName());
+        newSite.setUrl(siteConfig.getUrl());
+        newSite.setStatus(Status.INDEXING);
+        newSite.setStatusTime(LocalDateTime.now());
+        return newSite;
     }
 }

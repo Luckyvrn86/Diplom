@@ -18,11 +18,13 @@ spring:
 
 indexing-settings:
   sites:
-    - url: https://www.playback.ru
+    - url: https://lenta.ru
+      name: Лента.ру
+    - url: https://playback.ru
       name: PlayBack.Ru
-#    - url: https://lenta.ru
-#      name: Lenta
-#    - url: https://skillbox.ru
-#      name: Skillbox
+    - url: https://skillbox.ru
+      name: Skillbox
+
+
 
 

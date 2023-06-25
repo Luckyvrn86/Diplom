@@ -71,7 +71,9 @@ public class SearchServiceImpl implements SearchService {
         List<Lemma> sortedLemmas = getAverageFrequency(lemmaRequest);
         List<SearchData> searchData;
         searchData = getSearchResponse(sortedLemmas, searchRequest, offset);
-        return searchData.subList(0, limit);
+        if (searchData.size() < 10) {
+            return searchData;
+        } else return searchData.subList(0, limit);
     }
 
     private Set<Page> getPages(List<Lemma> lemmas) {

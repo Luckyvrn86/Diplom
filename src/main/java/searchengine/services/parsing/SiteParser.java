@@ -25,7 +25,7 @@ import static java.lang.Thread.sleep;
 @RequiredArgsConstructor
 public class SiteParser extends RecursiveAction {
     private String url;
-    private final Site site;
+    private Site site;
     private final SiteRepository siteRepository;
     private final PageRepository pageRepository;
     private final LemmaRepository lemmaRepository;
@@ -35,6 +35,14 @@ public class SiteParser extends RecursiveAction {
 
     public SiteParser(Site site, IndexingServiceImpl indexingService) {
         this.site = site;
+        pageRepository = indexingService.getPageRepository();
+        siteRepository = indexingService.getSiteRepository();
+        lemmaRepository = indexingService.getLemmaRepository();
+        indexRepository = indexingService.getIndexRepository();
+        visit = new ArrayList<>();
+    }
+    public SiteParser(String url, IndexingServiceImpl indexingService) {
+        this.url = url;
         pageRepository = indexingService.getPageRepository();
         siteRepository = indexingService.getSiteRepository();
         lemmaRepository = indexingService.getLemmaRepository();
@@ -54,10 +62,15 @@ public class SiteParser extends RecursiveAction {
 
     @Override
     protected void compute() {
-        String currentUrl = site.getUrl();
-        currentUrl = url == null ? currentUrl : currentUrl + url;
+        String currentUrl;
+        if (site.getUrl() == null) {
+            currentUrl = url;
+        } else {
+            currentUrl = site.getUrl();
+            currentUrl = url == null ? currentUrl : currentUrl + url;
+        }
         try {
-            sleep(250);
+            sleep(350);
             Document document = Jsoup.connect(currentUrl).userAgent("LuckySearchBot (Windows; U; WindowsNT" +
                             " 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6").referrer("http://www.google.com")
                     .ignoreContentType(true).ignoreHttpErrors(true).get();
@@ -65,7 +78,7 @@ public class SiteParser extends RecursiveAction {
             Elements urls = document.select("a");
             for (Element url : urls) {
                 String child = url.absUrl("href").replaceAll("\\?.+", "");
-                if (isValid(child) && pageRepository.findByPath(correctUrl(child)) == null && !visit.contains(child)) {
+                if (isValid(child) && !visit.contains(child)) {
                     visit.add(child);
                     SiteParser parser = new SiteParser(correctUrl(child), this);
                     parser.fork();
@@ -78,10 +91,12 @@ public class SiteParser extends RecursiveAction {
             }
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
-            Site newSite = siteRepository.findSiteByUrl(site.getUrl());
-            newSite.setStatus(Status.FAILED);
-            newSite.setLastError("Ошибка индексации сайта " + newSite.getUrl());
-            siteRepository.save(newSite);
+            if (siteRepository.findSiteByUrl(site.getUrl()) != null) {
+                Site newSite = siteRepository.findSiteByUrl(site.getUrl());
+                newSite.setStatus(Status.FAILED);
+                newSite.setLastError("Ошибка индексации сайта " + newSite.getUrl());
+                siteRepository.save(newSite);
+            }
         }
 
     }

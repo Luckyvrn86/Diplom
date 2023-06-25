@@ -11,5 +11,4 @@ import java.util.List;
 public interface PageRepository extends JpaRepository<Page, Integer> {
     List<Page> findAllBySite(Site site);
 
-    Page findByPath(String url);
 }
